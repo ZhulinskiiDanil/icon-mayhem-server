@@ -198,7 +198,10 @@ router.get('/admin/reports', sessionAuth(false), adminOnly, async (_req, res) =>
     `SELECT l.id, l.name, l.username, l.account_id, l.reports, l.hidden, l.created_at
      FROM looks l WHERE l.reports > 0 ORDER BY l.reports DESC, l.id DESC LIMIT 100`,
   );
-  res.json({ looks: rows });
+  const { rows: icons } = await db().query(
+    `SELECT hash, account_id, type, reports, hidden, created_at FROM icons WHERE reports > 0 ORDER BY reports DESC LIMIT 100`,
+  );
+  res.json({ looks: rows, icons });
 });
 
 router.post('/admin/looks/:id/:action', sessionAuth(false), adminOnly, async (req, res) => {

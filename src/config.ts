@@ -31,4 +31,7 @@ export const config = {
   reportHide: int('REPORT_HIDE', 5),
   maxLooksPerAccount: int('MAX_LOOKS_PER_ACCOUNT', 30),
   maxLooksPerDay: int('MAX_LOOKS_PER_DAY', 10),
+  // Custom icons: the oldest unused go first past this many per account
+  maxIconsPerAccount: int('MAX_ICONS_PER_ACCOUNT', 100),
+  maxIconBytes: int('MAX_ICON_BYTES', 1024 * 1024),
 };

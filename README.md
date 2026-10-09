@@ -1,6 +1,6 @@
 # Icon Mayhem gallery server
 
-The community gallery of looks for [Icon Mayhem](https://github.com/ZhulinskiiDanil/icon-mayhem), a Geode mod for Geometry Dash: players share their looks, browse and wear others', like them and report what doesn't belong.
+The community gallery of looks for [Icon Mayhem](https://github.com/ZhulinskiiDanil/icon-mayhem), a Geode mod for Geometry Dash: players share their looks, browse and wear others', like them and report what doesn't belong; on Globed they see each other's custom icons.
 
 Express + TypeScript + Postgres. Accounts are Geometry Dash accounts, checked with [Argon](https://github.com/GlobedGD/argon) (no passwords ever reach this server).
 
@@ -39,7 +39,11 @@ Writes need `Authorization: Bearer <session>`.
 | `DELETE /looks/:id` | its author or a moderator |
 | `POST /looks/:id/like`, `DELETE /looks/:id/like` | → `{ likes, liked }` |
 | `POST /looks/:id/report` | `{ reason? }`; 5 reports hide a look until a moderator unhides it |
-| `GET /admin/reports` | moderators (admin account or `X-Admin-Key`) |
+| `POST /icons` | a custom icon from More Icons: `{ type, quality, png (base64), frames }` → `{ hash }`. PNG only, 1 MB at most, the same icon is stored once, 100 per account (the oldest unused go) |
+| `GET /icons/:hash` | one icon by its hash; there is no list, a hash is only known to players who were shown it on Globed |
+| `POST /icons/:hash/report` | 5 reports hide an icon |
+| `POST /admin/icons/:hash/hide\|unhide\|delete` | moderators |
+| `GET /admin/reports` | moderators (admin account or `X-Admin-Key`): reported looks and icons |
 | `POST /admin/looks/:id/hide\|unhide\|delete` | moderators |
 | `GET /health` | `{ ok: true }` |
 

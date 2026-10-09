@@ -1,6 +1,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { errorHandler } from './errors.js';
+import { iconRouter } from './icons.js';
 import { router } from './routes.js';
 
 export function createApp() {
@@ -8,6 +9,8 @@ export function createApp() {
   // Railway sits in front: the client address comes in X-Forwarded-For
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
+  // Custom icons carry their picture: a bigger body on that route only, everything else stays small
+  app.use('/v1/icons', express.json({ limit: '2mb' }));
   app.use(express.json({ limit: '16kb' }));
 
   app.get('/health', (_req, res) => {
@@ -23,6 +26,7 @@ export function createApp() {
     '/v1/auth',
     rateLimit({ windowMs: 60 * 60_000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Too many logins, try later' } }),
   );
+  app.use('/v1', iconRouter);
   app.use('/v1', router);
 
   app.use((_req, res) => {

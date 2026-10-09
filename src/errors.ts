@@ -28,6 +28,12 @@ export function errorHandler(error: unknown, _req: Request, res: Response, _next
     res.status(400).json({ error: 'Invalid JSON' });
     return;
   }
+  // The body parser: too big, or not readable
+  const status = (error as { status?: unknown }).status;
+  if (typeof status === 'number' && status >= 400 && status < 500) {
+    res.status(status).json({ error: status === 413 ? 'That is too big to send' : 'Bad request' });
+    return;
+  }
   console.error(error);
   res.status(500).json({ error: 'Something went wrong on the server' });
 }

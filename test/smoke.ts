@@ -114,6 +114,38 @@ try {
 
   const paged = await call('GET', '/v1/looks?sort=new&limit=4&page=1');
   check('pages', paged.json.looks?.length === 4 && paged.json.hasMore === true, paged.json);
+
+  // ! --- Custom icons --- !
+  const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64, 7)]).toString('base64');
+  const frame = (role: string) => ({ role, x: 0, y: 0, w: 30, h: 30, rotated: false, ox: 0, oy: 0, sw: 30, sh: 30 });
+  const icon = { type: 'cube', quality: 4, png, frames: [frame(''), frame('2'), frame('glow')] };
+
+  check('uploading an icon needs a login', (await call('POST', '/v1/icons', icon)).status === 401);
+  const uploaded = await call('POST', '/v1/icons', icon, yor);
+  check('upload an icon', uploaded.status === 201 && /^[0-9a-f]{64}$/.test(uploaded.json.hash), uploaded);
+  const again = await call('POST', '/v1/icons', icon, yor);
+  check('the same icon is stored once', again.status === 200 && again.json.hash === uploaded.json.hash, again);
+  const fetched = await call('GET', `/v1/icons/${uploaded.json.hash}`);
+  check('fetch an icon by its hash', fetched.status === 200 && fetched.json.png === png && fetched.json.frames?.length === 3, fetched.json);
+  check('no list of icons', (await call('GET', '/v1/icons')).status === 404);
+
+  const notPng = await call('POST', '/v1/icons', { ...icon, png: Buffer.alloc(64, 1).toString('base64') }, yor);
+  check('not a PNG is refused', notPng.status === 400, notPng);
+  const badRole = await call('POST', '/v1/icons', { ...icon, frames: [frame('../evil')] }, yor);
+  check('an unknown frame role is refused', badRole.status === 400, badRole);
+  const huge = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(1100 * 1024, 1)]).toString('base64');
+  const tooBig = await call('POST', '/v1/icons', { ...icon, png: huge }, yor);
+  check('a huge icon is refused', tooBig.status === 413, tooBig);
+
+  check('no reporting your own icon', (await call('POST', `/v1/icons/${uploaded.json.hash}/report`, {}, yor)).status === 400);
+  for (const fan of fans) await call('POST', `/v1/icons/${uploaded.json.hash}/report`, {}, fan);
+  check('a reported icon hides', (await call('GET', `/v1/icons/${uploaded.json.hash}`)).status === 404);
+  const iconReports = await call('GET', '/v1/admin/reports', undefined, admin);
+  check('moderators see reported icons', iconReports.json.icons?.[0]?.hash === uploaded.json.hash, iconReports.json);
+  await call('POST', `/v1/admin/icons/${uploaded.json.hash}/unhide`, undefined, admin);
+  check('unhidden by a moderator', (await call('GET', `/v1/icons/${uploaded.json.hash}`)).status === 200);
+  await call('POST', `/v1/admin/icons/${uploaded.json.hash}/delete`, undefined, admin);
+  check('deleted by a moderator', (await call('GET', `/v1/icons/${uploaded.json.hash}`)).status === 404);
 } finally {
   server.close();
 }

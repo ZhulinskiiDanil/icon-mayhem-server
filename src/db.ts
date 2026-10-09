@@ -40,6 +40,28 @@ CREATE TABLE IF NOT EXISTS reports (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (look_id, account_id)
 );
+
+CREATE TABLE IF NOT EXISTS icons (
+  hash TEXT PRIMARY KEY,
+  account_id INTEGER NOT NULL,
+  type TEXT NOT NULL,
+  quality INTEGER NOT NULL,
+  png TEXT NOT NULL,
+  frames JSONB NOT NULL,
+  bytes INTEGER NOT NULL,
+  reports INTEGER NOT NULL DEFAULT 0,
+  hidden BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  used_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS icons_account ON icons (account_id);
+
+CREATE TABLE IF NOT EXISTS icon_reports (
+  hash TEXT NOT NULL REFERENCES icons (hash) ON DELETE CASCADE,
+  account_id INTEGER NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (hash, account_id)
+);
 `;
 
 let pool: pg.Pool | null = null;
