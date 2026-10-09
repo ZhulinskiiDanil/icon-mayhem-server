@@ -1,0 +1,32 @@
+{
+  "name": "icon-mayhem-server",
+  "version": "1.0.0",
+  "description": "Community gallery of looks for the Icon Mayhem Geometry Dash mod",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "smoke": "tsx test/smoke.ts"
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "pg": "^8.23.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.23.1",
+    "pg-mem": "^3.0.14",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}
