@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS looks (
 CREATE INDEX IF NOT EXISTS looks_created ON looks (created_at);
 CREATE INDEX IF NOT EXISTS looks_likes ON looks (likes);
 CREATE INDEX IF NOT EXISTS looks_account ON looks (account_id);
+-- The icon the author wore when sharing (its number and colors, and their custom icon if any)
+ALTER TABLE looks ADD COLUMN IF NOT EXISTS icon JSONB;
 
 CREATE TABLE IF NOT EXISTS likes (
   look_id INTEGER NOT NULL REFERENCES looks (id) ON DELETE CASCADE,

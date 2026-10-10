@@ -115,6 +115,17 @@ try {
   const paged = await call('GET', '/v1/looks?sort=new&limit=4&page=1');
   check('pages', paged.json.looks?.length === 4 && paged.json.hasMore === true, paged.json);
 
+  // ! --- The author's icon --- !
+  const authorIcon = { cube: 41, color1: '#ffffff', color2: '#ff80c0', glow: true, glowColor: '#00ffff', custom: 'a'.repeat(64) };
+  const withIcon = await call('POST', '/v1/looks', { name: 'On my icon', look: { ears: 'Fox' }, icon: authorIcon }, fans[1]);
+  check('publish with the icon of the author', withIcon.status === 201 && withIcon.json.icon?.cube === 41 && withIcon.json.icon?.custom === 'a'.repeat(64), withIcon.json);
+  const listedIcon = await call('GET', '/v1/looks?sort=new');
+  check('the gallery gives the icon of the author', listedIcon.json.looks?.find((look: any) => look.name === 'On my icon')?.icon?.glowColor === '#00ffff', listedIcon.json);
+  const noIcon = await call('POST', '/v1/looks', { name: 'No icon', look: { ears: 'Cat' } }, fans[1]);
+  check('an icon is optional', noIcon.status === 201 && noIcon.json.icon === null, noIcon.json);
+  const badIcon = await call('POST', '/v1/looks', { name: 'Bad icon', look: { ears: 'Cat' }, icon: { ...authorIcon, color1: 'red' } }, fans[1]);
+  check('a bad icon is refused', badIcon.status === 400, badIcon);
+
   // ! --- Following --- !
   check('following needs a login', (await call('POST', '/v1/follows/2')).status === 401);
   check('no following yourself', (await call('POST', '/v1/follows/2', undefined, yor)).status === 400);

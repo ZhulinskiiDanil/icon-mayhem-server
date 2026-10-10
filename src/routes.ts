@@ -23,9 +23,22 @@ export function lookSchemaOf(maxBytes: number) {
 }
 const lookSchema = lookSchemaOf(MAX_LOOK_BYTES);
 
+// The icon the look was made on: everybody sees the look on it in the gallery
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'a color is #rrggbb');
+export const authorIconSchema = z.object({
+  cube: z.number().int().min(1).max(5000),
+  color1: hexColor,
+  color2: hexColor,
+  glow: z.boolean(),
+  glowColor: hexColor,
+  // Their custom icon (Custom icons: More Icons or a texture pack), by its hash
+  custom: z.string().regex(/^[0-9a-f]{64}$/, 'not an icon hash').nullable().optional(),
+});
+
 const publishBody = z.object({
   name: z.string().trim().min(1).max(32),
   look: lookSchema,
+  icon: authorIconSchema.optional(),
 });
 
 const listQuery = z.object({
@@ -43,6 +56,7 @@ interface LookRow {
   username: string;
   name: string;
   look: Record<string, unknown>;
+  icon?: unknown;
   likes: number;
   reports: number;
   hidden: boolean;
@@ -62,6 +76,7 @@ function present(row: LookRow, req: Request) {
     hidden: row.hidden,
     createdAt: new Date(row.created_at).toISOString(),
     look: row.look,
+    icon: row.icon ?? null,
   };
 }
 
@@ -168,8 +183,8 @@ router.post('/looks', sessionAuth(true), async (req, res) => {
   if (today >= config.maxLooksPerDay) throw new HttpError(429, `That's ${config.maxLooksPerDay} looks today, share more tomorrow`);
 
   const { rows } = await db().query<LookRow>(
-    `INSERT INTO looks (account_id, username, name, look) VALUES ($1, $2, $3, $4) RETURNING *`,
-    [user.accountId, user.username, body.name, JSON.stringify(body.look)],
+    `INSERT INTO looks (account_id, username, name, look, icon) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [user.accountId, user.username, body.name, JSON.stringify(body.look), body.icon ? JSON.stringify(body.icon) : null],
   );
   res.status(201).json(present(rows[0]!, req));
 });

@@ -64,7 +64,11 @@ iconRouter.post('/icons', sessionAuth(true), async (req, res) => {
       'SELECT hash FROM icons WHERE account_id = $1 ORDER BY used_at DESC, created_at DESC',
       [user.accountId],
     );
-    for (const old of rows.slice(config.maxIconsPerAccount)) await db().query('DELETE FROM icons WHERE hash = $1', [old.hash]);
+    // An icon a look of the gallery is shown on stays
+    for (const old of rows.slice(config.maxIconsPerAccount)) {
+      const { rows: used } = await db().query("SELECT 1 FROM looks WHERE icon->>'custom' = $1 LIMIT 1", [old.hash]);
+      if (!used.length) await db().query('DELETE FROM icons WHERE hash = $1', [old.hash]);
+    }
   }
   res.status(rowCount ? 200 : 201).json({ hash });
 });
