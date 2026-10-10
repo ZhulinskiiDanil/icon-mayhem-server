@@ -56,6 +56,14 @@ CREATE TABLE IF NOT EXISTS icons (
 );
 CREATE INDEX IF NOT EXISTS icons_account ON icons (account_id);
 
+CREATE TABLE IF NOT EXISTS follows (
+  follower INTEGER NOT NULL,
+  author INTEGER NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (follower, author)
+);
+CREATE INDEX IF NOT EXISTS follows_author ON follows (author);
+
 CREATE TABLE IF NOT EXISTS worn_looks (
   hash TEXT PRIMARY KEY,
   account_id INTEGER NOT NULL,

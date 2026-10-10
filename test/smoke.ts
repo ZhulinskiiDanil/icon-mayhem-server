@@ -115,6 +115,22 @@ try {
   const paged = await call('GET', '/v1/looks?sort=new&limit=4&page=1');
   check('pages', paged.json.looks?.length === 4 && paged.json.hasMore === true, paged.json);
 
+  // ! --- Following --- !
+  check('following needs a login', (await call('POST', '/v1/follows/2')).status === 401);
+  check('no following yourself', (await call('POST', '/v1/follows/2', undefined, yor)).status === 400);
+  await call('POST', '/v1/looks', { name: 'Yor again', look: { ears: 'Cat' } }, yor);
+  const followed = await call('POST', '/v1/follows/2', undefined, fans[2]);
+  check('follow an author', followed.status === 200 && followed.json.following === true && followed.json.followers === 1, followed);
+  const feed = await call('GET', '/v1/looks?sort=following', undefined, fans[2]);
+  check('the following list has their looks only', feed.json.looks?.length > 0 && feed.json.looks.every((look: any) => look.author.accountId === 2 && look.author.following === true), feed.json);
+  check('the following list needs a login', (await call('GET', '/v1/looks?sort=following')).status === 401);
+  const meFollowing = await call('GET', '/v1/me', undefined, fans[2]);
+  check('me counts who I follow', meFollowing.json.following === 1, meFollowing.json);
+  const unfollowed = await call('DELETE', '/v1/follows/2', undefined, fans[2]);
+  check('unfollow', unfollowed.json.following === false && unfollowed.json.followers === 0, unfollowed);
+  const emptyFeed = await call('GET', '/v1/looks?sort=following', undefined, fans[2]);
+  check('nothing followed, nothing listed', emptyFeed.json.looks?.length === 0, emptyFeed.json);
+
   // ! --- Worn looks --- !
   const worn = { bangs: true, 'bangs-style': 'Clumps', 'custom-color': '#2b2929', density: 40 };
   check('wearing a look needs a login', (await call('POST', '/v1/worn', { look: worn })).status === 401);

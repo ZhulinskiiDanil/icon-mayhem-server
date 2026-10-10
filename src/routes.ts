@@ -29,7 +29,7 @@ const publishBody = z.object({
 });
 
 const listQuery = z.object({
-  sort: z.enum(['top', 'new', 'mine']).default('top'),
+  sort: z.enum(['top', 'new', 'mine', 'following']).default('top'),
   q: z.string().trim().max(40).optional(),
   page: z.coerce.number().int().min(0).max(1000).default(0),
   limit: z.coerce.number().int().min(1).max(30).default(8),
@@ -48,13 +48,14 @@ interface LookRow {
   hidden: boolean;
   created_at: Date | string;
   liked?: boolean | null;
+  following?: boolean | null;
 }
 
 function present(row: LookRow, req: Request) {
   return {
     id: row.id,
     name: row.name,
-    author: { accountId: row.account_id, username: row.username },
+    author: { accountId: row.account_id, username: row.username, following: Boolean(row.following) },
     likes: row.likes,
     liked: Boolean(row.liked),
     mine: req.user?.accountId === row.account_id,
@@ -66,8 +67,10 @@ function present(row: LookRow, req: Request) {
 
 async function findLook(id: number, req: Request): Promise<LookRow> {
   const { rows } = await db().query<LookRow>(
-    `SELECT l.*, (lk.account_id IS NOT NULL) AS liked
-     FROM looks l LEFT JOIN likes lk ON lk.look_id = l.id AND lk.account_id = $2
+    `SELECT l.*, (lk.account_id IS NOT NULL) AS liked, (f.follower IS NOT NULL) AS following
+     FROM looks l
+     LEFT JOIN likes lk ON lk.look_id = l.id AND lk.account_id = $2
+     LEFT JOIN follows f ON f.author = l.account_id AND f.follower = $2
      WHERE l.id = $1`,
     [id, req.user?.accountId ?? 0],
   );
@@ -82,18 +85,44 @@ router.post('/auth/login', async (req, res) => {
   res.json({ session, ...user });
 });
 
-router.get('/me', sessionAuth(true), (req, res) => {
-  res.json(req.user);
+router.get('/me', sessionAuth(true), async (req, res) => {
+  const { rows } = await db().query<{ count: string }>('SELECT count(*) AS count FROM follows WHERE follower = $1', [req.user!.accountId]);
+  res.json({ ...req.user, following: Number(rows[0]?.count ?? 0) });
+});
+
+// ! --- Following --- !
+// Follow an author: their new looks show in the "following" list
+
+const accountParam = z.object({ accountId: z.coerce.number().int().positive() });
+
+async function setFollowing(req: Request, on: boolean) {
+  const { accountId } = accountParam.parse(req.params);
+  const user = req.user!;
+  if (accountId === user.accountId) throw new HttpError(400, "That's you");
+  if (on) await db().query('INSERT INTO follows (follower, author) VALUES ($1, $2) ON CONFLICT DO NOTHING', [user.accountId, accountId]);
+  else await db().query('DELETE FROM follows WHERE follower = $1 AND author = $2', [user.accountId, accountId]);
+  const { rows } = await db().query<{ count: string }>('SELECT count(*) AS count FROM follows WHERE author = $1', [accountId]);
+  return { following: on, followers: Number(rows[0]?.count ?? 0) };
+}
+
+router.post('/follows/:accountId', sessionAuth(true), async (req, res) => {
+  res.json(await setFollowing(req, true));
+});
+
+router.delete('/follows/:accountId', sessionAuth(true), async (req, res) => {
+  res.json(await setFollowing(req, false));
 });
 
 router.get('/looks', sessionAuth(false), async (req, res) => {
   const query = listQuery.parse(req.query);
   if (query.sort === 'mine' && !req.user) throw new HttpError(401, 'Log in to see your looks', 'session');
+  if (query.sort === 'following' && !req.user) throw new HttpError(401, 'Log in to see the authors you follow', 'session');
 
   const params: unknown[] = [req.user?.accountId ?? 0];
   const where: string[] = [];
   if (query.sort === 'mine') where.push('l.account_id = $1');
   else where.push('l.hidden = false');
+  if (query.sort === 'following') where.push('l.account_id IN (SELECT author FROM follows WHERE follower = $1)');
   if (query.q) {
     params.push(`%${query.q.toLowerCase()}%`);
     where.push(`(lower(l.name) LIKE $${params.length} OR lower(l.username) LIKE $${params.length})`);
@@ -102,8 +131,10 @@ router.get('/looks', sessionAuth(false), async (req, res) => {
   params.push(query.limit + 1, query.page * query.limit);
 
   const { rows } = await db().query<LookRow>(
-    `SELECT l.*, (lk.account_id IS NOT NULL) AS liked
-     FROM looks l LEFT JOIN likes lk ON lk.look_id = l.id AND lk.account_id = $1
+    `SELECT l.*, (lk.account_id IS NOT NULL) AS liked, (f.follower IS NOT NULL) AS following
+     FROM looks l
+     LEFT JOIN likes lk ON lk.look_id = l.id AND lk.account_id = $1
+     LEFT JOIN follows f ON f.author = l.account_id AND f.follower = $1
      WHERE ${where.join(' AND ')}
      ORDER BY ${order}
      LIMIT $${params.length - 1} OFFSET $${params.length}`,
