@@ -34,4 +34,6 @@ export const config = {
   // Custom icons: the oldest unused go first past this many per account
   maxIconsPerAccount: int('MAX_ICONS_PER_ACCOUNT', 100),
   maxIconBytes: int('MAX_ICON_BYTES', 1024 * 1024),
+  // Looks worn in levels: the oldest unused go first past this many per account
+  maxWornPerAccount: int('MAX_WORN_PER_ACCOUNT', 50),
 };

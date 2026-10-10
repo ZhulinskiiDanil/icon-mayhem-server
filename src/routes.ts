@@ -14,10 +14,14 @@ export const router = Router();
 const MAX_LOOK_BYTES = 8192;
 
 const lookValue = z.union([z.string().max(64), z.number().finite(), z.boolean()]);
-const lookSchema = z
-  .record(z.string().regex(/^[a-z0-9-]{1,48}$/, 'setting keys are lowercase words with dashes'), lookValue)
-  .refine((look) => Object.keys(look).length <= 400, 'too many settings')
-  .refine((look) => JSON.stringify(look).length <= MAX_LOOK_BYTES, `a look is ${MAX_LOOK_BYTES} bytes at most`);
+// Also for the looks worn in levels (worn.ts), which may be a bit bigger
+export function lookSchemaOf(maxBytes: number) {
+  return z
+    .record(z.string().regex(/^[a-z0-9-]{1,48}$/, 'setting keys are lowercase words with dashes'), lookValue)
+    .refine((look) => Object.keys(look).length <= 400, 'too many settings')
+    .refine((look) => JSON.stringify(look).length <= maxBytes, `a look is ${maxBytes} bytes at most`);
+}
+const lookSchema = lookSchemaOf(MAX_LOOK_BYTES);
 
 const publishBody = z.object({
   name: z.string().trim().min(1).max(32),

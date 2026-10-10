@@ -115,6 +115,23 @@ try {
   const paged = await call('GET', '/v1/looks?sort=new&limit=4&page=1');
   check('pages', paged.json.looks?.length === 4 && paged.json.hasMore === true, paged.json);
 
+  // ! --- Worn looks --- !
+  const worn = { bangs: true, 'bangs-style': 'Clumps', 'custom-color': '#2b2929', density: 40 };
+  check('wearing a look needs a login', (await call('POST', '/v1/worn', { look: worn })).status === 401);
+  const wornUp = await call('POST', '/v1/worn', { look: worn }, yor);
+  check('upload a worn look', wornUp.status === 201 && /^[0-9a-f]{64}$/.test(wornUp.json.hash), wornUp);
+  const reordered = Object.fromEntries(Object.entries(worn).reverse());
+  const wornAgain = await call('POST', '/v1/worn', { look: reordered }, fans[0]);
+  check('the same look in another order is the same hash', wornAgain.status === 200 && wornAgain.json.hash === wornUp.json.hash, wornAgain);
+  const wornGot = await call('GET', `/v1/worn/${wornUp.json.hash}`);
+  check('fetch a worn look by its hash', wornGot.status === 200 && wornGot.json.look?.['bangs-style'] === 'Clumps' && wornGot.json.look?.density === 40, wornGot.json);
+  check('an unknown worn look is gone', (await call('GET', `/v1/worn/${'0'.repeat(64)}`)).status === 404);
+  check('no list of worn looks', (await call('GET', '/v1/worn')).status === 404);
+  const wornBad = await call('POST', '/v1/worn', { look: { 'Not Valid': 1 } }, yor);
+  check('a bad worn look is refused', wornBad.status === 400, wornBad);
+  const wornHuge = await call('POST', '/v1/worn', { look: Object.fromEntries(Array.from({ length: 390 }, (_, i) => [`k-${i}`, 'x'.repeat(60)])) }, yor);
+  check('a huge worn look is refused', wornHuge.status === 400, wornHuge);
+
   // ! --- Custom icons --- !
   const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64, 7)]).toString('base64');
   const frame = (role: string) => ({ role, x: 0, y: 0, w: 30, h: 30, rotated: false, ox: 0, oy: 0, sw: 30, sh: 30 });

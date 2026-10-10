@@ -56,6 +56,15 @@ CREATE TABLE IF NOT EXISTS icons (
 );
 CREATE INDEX IF NOT EXISTS icons_account ON icons (account_id);
 
+CREATE TABLE IF NOT EXISTS worn_looks (
+  hash TEXT PRIMARY KEY,
+  account_id INTEGER NOT NULL,
+  look JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  used_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS worn_looks_account ON worn_looks (account_id);
+
 CREATE TABLE IF NOT EXISTS icon_reports (
   hash TEXT NOT NULL REFERENCES icons (hash) ON DELETE CASCADE,
   account_id INTEGER NOT NULL,
